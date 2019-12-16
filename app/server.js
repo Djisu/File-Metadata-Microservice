@@ -1,8 +1,12 @@
-const express = require('express')
-const app = express()
+'use strict';
+
+var express = require('express');
+var app = express()
+var cors = require('cors');
+
 const bodyParser = require('body-parser')
 
-const cors = require('cors')
+//const cors = require('cors')
 
 const mongoose = require('mongoose')
 mongoose.connect('mongodb+srv://djisu:Timbuk2tudjesu@cluster0-nlxec.mongodb.net/test?retryWrites=true&w=majority', 
@@ -10,66 +14,56 @@ mongoose.connect('mongodb+srv://djisu:Timbuk2tudjesu@cluster0-nlxec.mongodb.net/
   useUnifiedTopology: true 
 }); 
   const Schema = mongoose.Schema
-  var userSchema =  new Schema({
-    username:  {
+  var fileSchema =  new Schema({
+    filename:  {
       type: String
+    },
+    size: {
+      type: Number
     }
   })
 
 
-app.use(cors())
+//app.use(cors())
 
 app.use(bodyParser.urlencoded({extended: false}))
 app.use(bodyParser.json())
 
 
-app.use(express.static('public'))
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/views/index.html')
+// require and use "multer"...
+//var app = express();
+
+app.use(cors());
+app.use('/public', express.static(process.cwd() + '/public'));
+
+app.get('/', function (req, res) {
+     res.sendFile(process.cwd() + '/views/index.html');
+  });
+
+app.get('/hello', function(req, res){
+  res.json({greetings: "Hello, API"});
 });
 
 
-// Not found middleware
-app.use((req, res, next) => {
-  return next({status: 404, message: 'not found'})
+app.post('/api/fileanalyse', (req, res) => {
+    let fileName = req.params.filename
+    let fileSize = req.params.size
+    
+    const File = mongoose.model("File", fileSchema); 
+      var user = new File({
+        filename: fileName,
+        size: fileSize
+      })
+     user.save(function(err, data) {
+        if (err){
+          res.json({'message': err.toString()})
+        } else {
+          res.json({'filename': fileName, 'size': fileSize})
+        }
+      })
 })
 
-// Error Handling middleware
-app.use((err, req, res, next) => {
-  let errCode, errMessage
 
-  if (err.errors) {
-    // mongoose validation error
-    errCode = 400 // bad request
-    const keys = Object.keys(err.errors)
-    // report the first validation error
-    errMessage = err.errors[keys[0]].message
-  } else {
-    // generic or custom error
-    errCode = err.status || 500
-    errMessage = err.message || 'Internal Server Error'
-  }
-  res.status(errCode).type('txt')
-    .send(errMessage)
-})
-
-// create our schema
-app.post('/api/exercise/new-user', (req, res) => {
-
-
-
-  const User = mongoose.model("User", userSchema); 
-  var user = new User({
-    username: 'kofi'
-  })
- user.save(function(err, data) {
-    if (err){
-      res.json({'message': err.toString()})
-    } else {
-      res.json({'user': data})
-    }
-  })
-  })
-const listener = app.listen(process.env.PORT || 3000, () => {
-  console.log('Your app is listening on port ' + listener.address().port)
-})
+app.listen(process.env.PORT || 3000, function () {
+  console.log('Node.js listening ...');
+});
